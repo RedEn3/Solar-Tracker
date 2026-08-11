@@ -13,16 +13,6 @@ const float OFFSET_X = 164.0;
 const float OFFSET_Y = -108.0;
 const float OFFSET_Z = 6.0;
 
-float angleError(float current, float target)
-{
-    float error = target - current;
-
-    while (error > 180.0) error -= 360.0;
-    while (error < -180.0) error += 360.0;
-
-    return error;
-}
-
 void setup() {
   Serial.begin(115200);
   delay(500);
@@ -73,15 +63,15 @@ void loop() {
   float my_in = (float)my_raw - OFFSET_Y;
   float mz_in = (float)mz_raw - OFFSET_Z;
 
-  // Akcelerometr -> FRD
+  // Akcelerometr -> FRD (z korektą montażu 180°)
   float G_x = ay_raw;
-  float G_y = ax_raw;
-  float G_z = az_raw;
+  float G_y = -ax_raw;   // <- odwrocone
+  float G_z = -az_raw;   // <- odwrocone
 
-  // Magnetometr -> FRD
+  // Magnetometr -> FRD (ta sama korekta, symetrycznie)
   float B_x = mz_in;
-  float B_y = -my_in;
-  float B_z = -mx_in;
+  float B_y = my_in;     // <- odwrocone (bylo -my_in)
+  float B_z = mx_in;     // <- odwrocone (bylo -mx_in)
 
   float roll  = atan2(G_y, G_z);
   float pitch = atan2(-G_x, G_y * sin(roll) + G_z * cos(roll));
@@ -98,7 +88,8 @@ void loop() {
   float B_fy = B_y * cosRoll +
                B_z * sinRoll;
 
-  float heading = atan2(-B_fy, B_fx) * 180.0 / PI;
+  float heading = atan2(B_fy, B_fx) * 180.0 / PI;
+  heading += 160.0;
 
   while (heading < 0) heading += 360;
   while (heading >= 360) heading -= 360;
@@ -106,13 +97,8 @@ void loop() {
   float pitchDeg = -pitch * 180.0 / PI;
   float rollDeg  = -roll * 180.0 / PI;
 
- // Kierunek zadany przez ESP (na razie na sztywno)
-  float targetHeading = 270.0;   // Zachód
-
-  float headingError = angleError(heading, targetHeading);
-
   Serial.print("<");
-  Serial.print(headingError, 1);
+  Serial.print(heading, 1);
   Serial.print(",");
   Serial.print(pitchDeg, 1);
   Serial.print(",");
